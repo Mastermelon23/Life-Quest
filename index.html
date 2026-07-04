@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>LifeQuest Pro RPG</title>
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    
+    <style>
+        :root {
+            --bg-color: #070A0F;
+            --card-bg: #141A24;
+            --text-main: #F0F4F8;
+            --text-muted: #486581;
+            --accent-gold: #FFD700;
+            
+            --color-money: #00E676;
+            --color-health: #FF1744;
+            --color-religion: #D500F9;
+            --color-personality: #FF9100;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            padding: calc(20px + env(safe-area-inset-top)) 16px calc(20px + env(safe-area-inset-bottom)) 16px;
+            min-height: 100vh;
+        }
+
+        /* Hero Character Component */
+        .profile-section {
+            background: linear-gradient(145deg, #1C2431, #141A24);
+            border-radius: 24px;
+            padding: 20px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            border: 1px solid rgba(255, 215, 0, 0.1);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        }
+
+        .avatar-stage {
+            width: 90px;
+            height: 90px;
+            background: radial-gradient(circle, #243046 0%, #0D131C 100%);
+            border-radius: 20px;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 42px;
+            border: 2px solid #334E68;
+            cursor: pointer;
+        }
+
+        .avatar-layer {
+            position: absolute;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            height: 100%;
+        }
+        .layer-aura { font-size: 54px; opacity: 0.5; animation: spin 12s linear infinite; }
+        .layer-body { font-size: 38px; z-index: 2; transform: translateY(4px); }
+        .layer-head { font-size: 32px; z-index: 3; transform: translateY(-20px); }
+        .layer-hand { font-size: 26px; z-index: 4; transform: translate(24px, 10px); }
+
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        .profile-stats h2 { font-size: 22px; font-weight: 800; color: #FFF; }
+        .profile-stats p { font-size: 13px; color: var(--accent-gold); font-weight: 700; margin-top: 2px; }
+
+        /* Setup Screen Overlay */
+        #setup-screen, #wardrobe-drawer {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg-color);
+            z-index: 999;
+            padding: calc(40px + env(safe-area-inset-top)) 24px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .section-title { font-size: 26px; font-weight: 800; margin-bottom: 16px; text-align: center; }
+        
+        /* Wardrobe Styles */
+        .wardrobe-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            overflow-y: auto;
+            flex: 1;
+        }
+        .wardrobe-cat { background: #141A24; padding: 12px; border-radius: 16px; }
+        .wardrobe-cat h3 { font-size: 14px; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; }
+        .items-row { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; }
+        .item-node {
+            width: 60px; height: 60px; background: #070A0F; border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 24px; cursor: pointer; border: 2px solid transparent; flex-shrink: 0;
+            position: relative;
+        }
+        .item-node.equipped { border-color: var(--accent-gold); background: #1C2431; }
+        .item-node.locked { opacity: 0.25; cursor: not-allowed; }
+        .lock-indicator { position: absolute; font-size: 10px; bottom: 2px; color: red; font-weight: bold; }
+
+        /* Setup Interface Input Styles */
+        .setup-row { display: flex; justify-content: space-between; align-items: center; background: var(--card-bg); padding: 14px; border-radius: 14px; margin-bottom: 12px; }
+        .setup-row input { background: #070A0F; border: 1px solid #334E68; color: #fff; width: 70px; padding: 6px; border-radius: 8px; text-align: center; font-weight: bold; }
+        .action-btn-global { background: #F0F4F8; color: #070A0F; border: none; padding: 14px; border-radius: 14px; font-weight: 700; font-size: 15px; cursor: pointer; text-align: center; margin-top: auto; }
+
+        /* Core Tracker Grid Elements */
+        .grid { display: flex; flex-direction: column; gap: 14px; }
+        .pillar-card { background: var(--card-bg); border-radius: 20px; padding: 16px; border-left: 5px solid transparent; }
+        .pillar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .pillar-name { font-size: 18px; font-weight: 700; }
+        .level-badge { font-weight: 800; font-size: 13px; padding: 4px 8px; border-radius: 6px; background: rgba(255,255,255,0.05); }
+        .xp-track { width: 100%; height: 6px; background: #070A0F; border-radius: 3px; overflow: hidden; margin: 6px 0 12px 0; }
+        .xp-bar { height: 100%; width: 0%; transition: width 0.3s; }
+        .challenge-box { background: rgba(0, 0, 0, 0.15); border-radius: 12px; padding: 12px; font-size: 14px; }
+        .challenge-text { margin-bottom: 10px; font-weight: 500; }
+        .btn-group { display: flex; gap: 6px; }
+        .action-btn { flex: 1; border: none; padding: 8px; border-radius: 8px; font-weight: 700; font-size: 12px; cursor: pointer; background: rgba(255,255,255,0.05); color: var(--text-main); }
+    </style>
+</head>
+<body>
+
+    <div id="setup-screen" style="display: none;">
+        <div class="section-title">Character Initial Setup</div>
+        <div class="setup-row" style="border-left: 4px solid var(--color-money)"><label>Money Level</label><input type="number" id="start-money" value="1"></div>
+        <div class="setup-row" style="border-left: 4px solid var(--color-health)"><label>Health Level</label><input type="number" id="start-health" value="1"></div>
+        <div class="setup-row" style="border-left: 4px solid var(--color-religion)"><label>Religion Level</label><input type="number" id="start-religion" value="1"></div>
+        <div class="setup-row" style="border-left: 4px solid var(--color-personality)"><label>Personality Level</label><input type="number" id="start-personality" value="1"></div>
+        <button class="action-btn-global" onclick="confirmSetup()">Forge Character</button>
+    </div>
+
+    <div id="wardrobe-drawer" style="display: none;">
+        <div class="section-title">Hero Wardrobe</div>
+        <div class="wardrobe-grid" id="wardrobe-container"></div>
+        <button class="action-btn-global" onclick="closeWardrobe()" style="margin-top: 16px;">Equip & Close</button>
+    </div>
+
+    <div class="profile-section">
+        <div class="avatar-stage" onclick="openWardrobe()">
+            <div class="avatar-layer layer-aura" id="view-aura"></div>
+            <div class="avatar-layer layer-body" id="view-body">🧍</div>
+            <div class="avatar-layer layer-head" id="view-head"></div>
+            <div class="avatar-layer layer-hand" id="view-hand"></div>
+        </div>
+        <div class="profile-stats">
+            <h2 id="char-title">Grandmaster</h2>
+            <p id="global-level-display">TOTAL LVL --</p>
+        </div>
+    </div>
+
+    <div class="grid" id="main-grid"></div>
+
+    <script>
+        // System Unlock Tables (Tracked against combined stats sum)
+        const cosmeticRegistry = {
+            head: [
+                { item: '👑', name: 'Crown', levelReq: 1 },
+                { item: '🥽', name: 'Tech Visor', levelReq: 5 },
+                { item: '🪖', name: 'Tactical Helm', levelReq: 12 },
+                { item: '🦬', name: 'Mythic Horns', levelReq: 25 }
+            ],
+            body: [
+                { item: '🧍', name: 'Basic Attire', levelReq: 1 },
+                { item: '🥋', name: 'Training Gi', levelReq: 4 },
+                { item: '🛡️', name: 'Iron Plate', levelReq: 10 },
+                { item: '🥷', name: 'Shadow Cloak', levelReq: 20 }
+            ],
+            hand: [
+                { item: '💼', name: 'Asset Case', levelReq: 1 },
+                { item: '🏋️', name: 'Barbell', levelReq: 6 },
+                { item: '📜', name: 'Ancient Scroll', levelReq: 12 },
+                { item: '🗡️', name: 'Relic Blade', levelReq: 18 }
+            ],
+            aura: [
+                { item: '', name: 'None', levelReq: 1 },
+                { item: '✨', name: 'Sparkles', levelReq: 8 },
+                { item: '🔥', name: 'Hellfire', levelReq: 16 },
+                { item: '🌀', name: 'Cosmic Vortex', levelReq: 30 }
+            ]
+        };
+
+        const challengePools = {
+            money: ["Track every spending point manually today.", "Analyze bank ledger balances for anomalies.", "Transfer a set percentage allocation straight to investments."],
+            health: ["Complete targeted high-intensity movement intervals.", "Hit zero processed sugar targets over 24 hours.", "Hit clear hydration baseline parameters before dusk."],
+            religion: ["Dedicate 15 deep minutes to targeted scripture review.", "Execute morning routines flawlessly on time.", "Write out 3 distinct elements of profound daily gratitude."],
+            personality: ["Absorb 20 minutes structural standard-text literature.", "Run public presentation execution or speech pacing drills.", "Execute mechanical layout design or system file cleaning."]
+        };
+
+        let dbState = null;
+
+        function initApp() {
+            const cache = localStorage.getItem('lifequest_v2_state');
+            if (cache) {
+                dbState = JSON.parse(cache);
+                // Backward compatibility checks for inventory additions
+                if(!dbState.equipped) {
+                    dbState.equipped = { head: '', body: '🧍', hand: '', aura: '' };
+                }
+                updateRender();
+            } else {
+                document.getElementById('setup-screen').style.display = 'flex';
+            }
+        }
+
+        function confirmSetup() {
+            dbState = {
+                money: { level: parseInt(document.getElementById('start-money').value) || 1, xp: 0, challenge: challengePools.money[0] },
+                health: { level: parseInt(document.getElementById('start-health').value) || 1, xp: 0, challenge: challengePools.health[0] },
+                religion: { level: parseInt(document.getElementById('start-religion').value) || 1, xp: 0, challenge: challengePools.religion[0] },
+                personality: { level: parseInt(document.getElementById('start-personality').value) || 1, xp: 0, challenge: challengePools.personality[0] },
+                equipped: { head: '', body: '🧍', hand: '', aura: '' }
+            };
+            saveState();
+            document.getElementById('setup-screen').style.display = 'none';
+            updateRender();
+        }
+
+        function saveState() {
+            localStorage.setItem('lifequest_v2_state', JSON.stringify(dbState));
+        }
+
+        function calculateTotalLevel() {
+            return dbState.money.level + dbState.health.level + dbState.religion.level + dbState.personality.level;
+        }
+
+        function executeHabit(pillar) {
+            let data = dbState[pillar];
+            let cap = data.level * 100;
+            data.xp += 20; // Fast habit modifier split
+
+            if (data.xp >= cap) {
+                data.xp -= cap;
+                data.level += 1;
+                alert(`🎉 LEVEL UP! ${pillar.toUpperCase()} hit Level ${data.level}! New customization ideas may be unlocked inside your Wardrobe!`);
+            }
+            saveState();
+            updateRender();
+        }
+
+        function completeMission(pillar) {
+            let data = dbState[pillar];
+            let reward = data.level * 45;
+            data.challenge = challengePools[pillar][Math.floor(Math.random() * challengePools[pillar].length)];
+            data.xp += reward;
+            
+            let cap = data.level * 100;
+            if (data.xp >= cap) {
+                data.xp -= cap;
+                data.level += 1;
+                alert(`🎉 LEVEL UP! ${pillar.toUpperCase()} hit Level ${data.level}!`);
+            }
+            saveState();
+            updateRender();
+        }
+
+        function updateRender() {
+            const currentTotal = calculateTotalLevel();
+            document.getElementById('global-level-display').innerText = `TOTAL LEVEL: ${currentTotal}`;
+            
+            // Render Equipped Visual Layers on Avatar Stage
+            document.getElementById('view-head').innerText = dbState.equipped.head;
+            document.getElementById('view-body').innerText = dbState.equipped.body || '🧍';
+            document.getElementById('view-hand').innerText = dbState.equipped.hand;
+            document.getElementById('view-aura').innerText = dbState.equipped.aura;
+
+            // Generate Trackers
+            const container = document.getElementById('main-grid');
+            container.innerHTML = '';
+            
+            const config = [
+                { id: 'money', title: 'Money', col: 'var(--color-money)' },
+                { id: 'health', title: 'Health', col: 'var(--color-health)' },
+                { id: 'religion', title: 'Religion', col: 'var(--color-religion)' },
+                { id: 'personality', title: 'Personality', col: 'var(--color-personality)' }
+            ];
+
+            config.forEach(item => {
+                const p = dbState[item.id];
+                const limit = p.level * 100;
+                const ratio = (p.xp / limit) * 100;
+
+                container.insertAdjacentHTML('beforeend', `
+                    <div class="pillar-card" style="border-left-color: ${item.col}">
+                        <div class="pillar-header">
+                            <span class="pillar-name">${item.title}</span>
+                            <span class="level-badge" style="color: ${item.col}">LVL ${p.level}</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; font-size:11px; color:var(--text-muted);">
+                            <span>Progress XP</span><span>${p.xp}/${limit}</span>
+                        </div>
+                        <div class="xp-track"><div class="xp-bar" style="background:${item.col}; width:${ratio}%"></div></div>
+                        <div class="challenge-box">
+                            <div class="challenge-text">${p.challenge}</div>
+                            <div class="btn-group">
+                                <button class="action-btn" onclick="executeHabit('${item.id}')">+20 XP Action</button>
+                                <button class="action-btn" style="background:${item.col}; color:#000;" onclick="completeMission('${item.id}')">Clear Mission</button>
+                            </div>
+                        </div>
+                    </div>
+                `);
+            });
+        }
+
+        /* Wardrobe Logic Handlers */
+        function openWardrobe() {
+            const drawer = document.getElementById('wardrobe-container');
+            drawer.innerHTML = '';
+            const totalLvl = calculateTotalLevel();
+
+            for (let slot in cosmeticRegistry) {
+                let catHTML = `<div class="wardrobe-cat"><h3>${slot} Slot</h3><div class="items-row">`;
+                
+                cosmeticRegistry[slot].forEach(node => {
+                    const isLocked = totalLvl < node.levelReq;
+                    const isEquipped = dbState.equipped[slot] === node.item;
+                    
+                    catHTML += `
+                        <div class="item-node ${isLocked ? 'locked' : ''} ${isEquipped ? 'equipped' : ''}" 
+                             onclick="${isLocked ? '' : `selectCosmetic('${slot}', '${node.item}')`}">
+                            ${node.item === '' ? '🚫' : node.item}
+                            ${isLocked ? `<div class="lock-indicator">L${node.levelReq}</div>` : ''}
+                        </div>
+                    `;
+                });
+                
+                catHTML += `</div></div>`;
+                drawer.insertAdjacentHTML('beforeend', catHTML);
+            }
+            document.getElementById('wardrobe-drawer').style.display = 'flex';
+        }
+
+        function selectCosmetic(slot, itemValue) {
+            dbState.equipped[slot] = itemValue;
+            saveState();
+            openWardrobe(); // Re-render window updates
+        }
+
+        function closeWardrobe() {
+            document.getElementById('wardrobe-drawer').style.display = 'none';
+            updateRender();
+        }
+
+        initApp();
+    </script>
+</body>
+</html>
